@@ -1,0 +1,132 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "subscriptionId": {
+            "type": "String"
+        },
+        "name": {
+            "type": "String"
+        },
+        "location": {
+            "type": "String"
+        },
+        "hostingPlanName": {
+            "type": "String"
+        },
+        "serverFarmResourceGroup": {
+            "type": "String"
+        },
+        "alwaysOn": {
+            "type": "Bool"
+        },
+        "ftpsState": {
+            "type": "String"
+        },
+        "sku": {
+            "type": "String"
+        },
+        "skuCode": {
+            "type": "String"
+        },
+        "workerSize": {
+            "type": "String"
+        },
+        "workerSizeId": {
+            "type": "String"
+        },
+        "numberOfWorkers": {
+            "type": "String"
+        },
+        "linuxFxVersion": {
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2018-11-01",
+            "name": "[parameters('name')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "microsoft.insights/components/lasapsvc",
+                "[concat('Microsoft.Web/serverfarms/', parameters('hostingPlanName'))]"
+            ],
+            "tags": {
+                "las": ""
+            },
+            "properties": {
+                "name": "[parameters('name')]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference('microsoft.insights/components/lasapsvc', '2015-05-01').InstrumentationKey]"
+                        },
+                        {
+                            "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                            "value": "[reference('microsoft.insights/components/lasapsvc', '2015-05-01').ConnectionString]"
+                        },
+                        {
+                            "name": "ApplicationInsightsAgent_EXTENSION_VERSION",
+                            "value": "~3"
+                        },
+                        {
+                            "name": "XDT_MicrosoftApplicationInsights_Mode",
+                            "value": "default"
+                        }
+                    ],
+                    "linuxFxVersion": "[parameters('linuxFxVersion')]",
+                    "alwaysOn": "[parameters('alwaysOn')]",
+                    "ftpsState": "[parameters('ftpsState')]"
+                },
+                "serverFarmId": "[concat('/subscriptions/', parameters('subscriptionId'),'/resourcegroups/', parameters('serverFarmResourceGroup'), '/providers/Microsoft.Web/serverfarms/', parameters('hostingPlanName'))]",
+                "clientAffinityEnabled": false,
+                "virtualNetworkSubnetId": null,
+                "httpsOnly": true,
+                "publicNetworkAccess": "Enabled"
+            }
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2018-11-01",
+            "name": "[parameters('hostingPlanName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [],
+            "tags": {
+                "las": ""
+            },
+            "sku": {
+                "Tier": "[parameters('sku')]",
+                "Name": "[parameters('skuCode')]"
+            },
+            "kind": "linux",
+            "properties": {
+                "name": "[parameters('hostingPlanName')]",
+                "workerSize": "[parameters('workerSize')]",
+                "workerSizeId": "[parameters('workerSizeId')]",
+                "numberOfWorkers": "[parameters('numberOfWorkers')]",
+                "reserved": true,
+                "zoneRedundant": false
+            }
+        },
+        {
+            "type": "microsoft.insights/components",
+            "apiVersion": "2020-02-02-preview",
+            "name": "lasapsvc",
+            "location": "japaneast",
+            "dependsOn": [],
+            "tags": {
+                "las": ""
+            },
+            "properties": {
+                "ApplicationId": "[parameters('name')]",
+                "Request_Source": "IbizaWebAppExtensionCreate",
+                "Flow_Type": "Redfield",
+                "Application_Type": "web",
+                "WorkspaceResourceId": "/subscriptions/ed070054-1009-48dd-8bc0-b9c2ee96d858/resourceGroups/nakane_Azure/providers/Microsoft.OperationalInsights/workspaces/workspace-dataversebatchcreate"
+            }
+        }
+    ]
+}
