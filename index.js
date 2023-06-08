@@ -4,27 +4,35 @@ const { v1: uuidv1 } = require('uuid');
 
 const express = require("express");
 const bodyParser = require('body-parser');
+
 const app = express();
-
-const multer = require('multer');
-const uploads = multer({ dest: 'datastore/' });
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public'));
 
+const port = process.env.PORT ? process.env.PORT : 3000;
+app.listen(process.env.PORT ? process.env.PORT : 3000, () => {
+    console.log("App Service server started at " + port);
+});
+
+const multer = require('multer');
+const uploads = multer({ dest: 'datastore/' });
+
 require("dotenv").config();
 
+// FIXME some library is deprecated
 const fs = require('fs')
 const { parse } = require('csv-parse')
 const csv = require('csvtojson')
 const axios = require('axios')
 const short = require('short-uuid')
 
+// FIXME should not handling blob URI and status code globally
 let uri = '';
 let status_code = 200;
+
 const upload = async (group, data) => {
     try {
         const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -156,11 +164,18 @@ const uploadFile = async (path) => {
 };
 */
 
+const auth = () => {
+
+
+};
+
 app.post('/upload-file', uploads.single('file'), (req, res) => {
-    console.log('upload-csv');
-    console.log('User-Agent: ' + req.headers['user-agent']);
-    console.log('Content-Type: ' + req.headers['content-type']);
-    console.log('Content-Length: ' + req.headers['content-length']);
+    console.log('upload-file');
+
+    // FIXME removed oauth2 injectioon
+    //       implement dataverse authentication using MSAL
+    // INFO for dotnet, this repo could be helpful
+    //      https://github.com/microsoft/PowerApps-Samples/tree/master/dataverse/webapi/C%23/QuickStart
 
     const access_token = req.body?.access_token;
     // uploaded file here
@@ -170,7 +185,7 @@ app.post('/upload-file', uploads.single('file'), (req, res) => {
         //const uuid = short.generate();
 
         let payload = '--batch_100\nContent-Type: multipart/mixed;boundary=changeset_AA100\n\n'
-        // INFO: Content-ID must be started from 1
+        // Content-ID must be started from 1
         for (let i = 1; i <= jsonObj.length; i++) {
             payload += '--changeset_AA100\nContent-Type: application/http\nContent-Transfer-Encoding:binary\n' +
                 'Content-ID: ' + (i) + '\n\n' +
@@ -207,13 +222,6 @@ app.post('/upload-file', uploads.single('file'), (req, res) => {
     res.status(200).send('Upload OK');
 });
 
-
 app.all('/echo', (req, res) => {
     res.status(200).send('OK');
-});
-
-const port = process.env.PORT ? process.env.PORT : 8080;
-
-app.listen(process.env.PORT ? process.env.PORT : 8080, () => {
-    console.log("App Service server started at " + port);
 });
