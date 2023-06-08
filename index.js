@@ -29,6 +29,28 @@ const csv = require('csvtojson')
 const axios = require('axios')
 const short = require('short-uuid')
 
+
+const msalConfig = {
+    auth: {
+        clientId: process.env.CLIENT_ID,
+        authority: process.env.CLOUD_INSTANCE + process.env.TENANT_ID,
+        clientSecret: process.env.CLIENT_SECRET
+    },
+    system: {
+        loggerOptions: {
+            loggerCallback(loglevel, message, containsPii) {
+                console.log(message);
+            },
+            piiLoggingEnabled: false,
+            logLevel: "Info",
+        }
+    }
+}
+
+const REDIRECT_URI = process.env.REDIRECT_URI;
+const POST_LOGOUT_REDIRECT_URI = process.env.POST_LOGOUT_REDIRECT_URI;
+const GRAPH_ME_ENDPOINT = process.env.GRAPH_API_ENDPOINT + "v1.0/me";
+
 // FIXME should not handling blob URI and status code globally
 let uri = '';
 let status_code = 200;
@@ -164,20 +186,33 @@ const uploadFile = async (path) => {
 };
 */
 
-const auth = () => {
-
-
-};
-
 app.post('/upload-file', uploads.single('file'), (req, res) => {
     console.log('upload-file');
 
-    // FIXME removed oauth2 injectioon
-    //       implement dataverse authentication using MSAL
-    // INFO for dotnet, this repo could be helpful
-    //      https://github.com/microsoft/PowerApps-Samples/tree/master/dataverse/webapi/C%23/QuickStart
+    // TODO - removed oauth2 injectioon
+    //      - implement dataverse authentication using MSAL
+    //      - for dotnet, this repo could be helpful
+    //        https://github.com/microsoft/PowerApps-Samples/tree/master/dataverse/webapi/C%23/QuickStart
 
-    const access_token = req.body?.access_token;
+    const access_token = req.query?.access_token || req.body?.access_token;
+
+    if (!access_token) {
+        const msalInstance = new msal.ConfidentialClientApplication(msalConfig);
+        const cryptoProvider = new msal.CryptoProvider();
+        msalInstance.handleRedirectPromise(cryptoProvider).then((authResponse) => {
+            if (authResponse) {
+                res.status(200).send({
+                    "access_token": authResponse.accessToken
+                });
+            } else {
+                res.status(400).send("Bad Request");
+            }
+        }).catch((error) => {
+            console.error(error);
+            res.status(500).send("Internal Server Error");
+        });
+    }
+
     // uploaded file here
     console.log(req.file);
 
@@ -219,9 +254,10 @@ app.post('/upload-file', uploads.single('file'), (req, res) => {
                 console.log(JSON.stringify(error.response.data))
             })
     })
-    res.status(200).send('Upload OK');
+    res.status(200).send('OK');
 });
 
-app.all('/echo', (req, res) => {
+// for App Service Health Check
+app.all('/health', (req, res) => {
     res.status(200).send('OK');
 });
